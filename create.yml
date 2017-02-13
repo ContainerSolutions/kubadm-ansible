@@ -16,4 +16,4 @@
   become: yes
   tasks:
   - name: join cluster
-    command: kubeadm join --token={{ hostvars['pia']['kubeadm_token'].stdout }} {{ master_ip }}
+    command: kubeadm join --token={{ hostvars['master01']['kubeadm_token'].stdout }} {{ master_ip }}
