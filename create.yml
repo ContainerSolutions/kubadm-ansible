@@ -1,0 +1,19 @@
+---
+- include: vars.yaml
+- hosts: master
+  become: yes
+  tasks:
+  - name: generate token
+    command: kubeadm token generate
+    register: kubeadm_token
+    run_once: true
+  - name: master init
+    command: kubeadm init --api-advertise-addresses={{ master_ip }} --token {{ kubeadm_token.stdout }}
+  - name: install weave
+    command: kubectl apply -f https://git.io/weave-kube
+
+- hosts: nodes
+  become: yes
+  tasks:
+  - name: join cluster
+    command: kubeadm join --token={{ hostvars['pia']['kubeadm_token'].stdout }} {{ master_ip }}

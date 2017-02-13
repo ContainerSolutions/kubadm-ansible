@@ -1,0 +1,12 @@
+---
+- hosts: nodes
+  become: yes
+  tasks:
+  - name: reset node
+    command: kubeadm reset
+
+- hosts: master
+  become: yes
+  tasks:
+  - name: reset node
+    command: kubeadm reset

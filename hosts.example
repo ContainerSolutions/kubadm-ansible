@@ -1,0 +1,6 @@
+[master]
+master01 ansible_user=user
+
+[nodes]
+node0[1:4] ansible_user=user
+
