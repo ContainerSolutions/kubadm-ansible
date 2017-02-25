@@ -1,8 +1,9 @@
 ---
-- include: vars.yaml
+
 - hosts: master
   become: yes
   tasks:
+  - include_vars: vars.yaml
   - name: generate token
     command: kubeadm token generate
     register: kubeadm_token
@@ -15,5 +16,6 @@
 - hosts: nodes
   become: yes
   tasks:
+  - include_vars: vars.yaml
   - name: join cluster
     command: kubeadm join --token={{ hostvars['master01']['kubeadm_token'].stdout }} {{ master_ip }}
