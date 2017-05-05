@@ -1,21 +1,44 @@
 ---
+- hosts: pies
+  become: yes
+  tasks:
+  - name: check if machine-id is unique
+    include: unique-machine-id.yml
+    # all hypriotos images ship with this machine-id
+    when: ansible_machine_id == "9989a26f06984d6dbadc01770f018e3b"
+  - name: make sure hostname resolves to internal ip
+    lineinfile:
+      dest: /etc/hosts
+      regexp: '.*{{ ansible_hostname }}$'
+      line: '{{ ansible_eth0["ipv4"]["address"] }} {{ ansible_hostname }}'
+      state: present
 
 - hosts: master
   become: yes
   tasks:
-  - include_vars: vars.yaml
   - name: generate token
     command: kubeadm token generate
     register: kubeadm_token
     run_once: true
   - name: master init
-    command: kubeadm init --api-advertise-addresses={{ master_ip }} --token {{ kubeadm_token.stdout }}
+    command: kubeadm init --skip-preflight-checks --api-advertise-addresses={{ ansible_eth0["ipv4"]["address"] }} --api-external-dns-names={{ ansible_hostname }} --token {{ kubeadm_token.stdout }}
+    args:
+      creates: /etc/kubernetes/kubelet.conf
   - name: install weave
     command: kubectl apply -f https://git.io/weave-kube
+  - name: fetch the config
+    fetch:
+      src: /etc/kubernetes/admin.conf
+      dest: .kube/{{ ansible_hostname }}
+      flat: yes
+  - name: replace ip with hostname in kubeconfig
+    local_action: lineinfile dest=.kube/{{ ansible_hostname }} regexp='^(.*server:\ https://).*:(\d*)$' line='\1{{ ansible_hostname }}:\2' backrefs=yes
+    become: false
 
 - hosts: nodes
   become: yes
   tasks:
-  - include_vars: vars.yaml
   - name: join cluster
-    command: kubeadm join --token={{ hostvars['master01']['kubeadm_token'].stdout }} {{ master_ip }}
+    command: kubeadm join --skip-preflight-checks --token={{ hostvars[groups['master'][0]]['kubeadm_token'].stdout }} {{ hostvars[groups['master'][0]]["ansible_eth0"]["ipv4"]["address"] }}
+    args:
+      creates: /etc/kubernetes/kubelet.conf
